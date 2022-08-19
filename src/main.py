@@ -8,7 +8,12 @@ from flask_swagger import swagger
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
-from models import db, User
+from models import db, User, Favorites
+
+from flask_jwt_extended import create_access_token
+from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import jwt_required
+from flask_jwt_extended import JWTManager
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
@@ -19,7 +24,10 @@ db.init_app(app)
 CORS(app)
 setup_admin(app)
 
-# Handle/serialize errors like a JSON object
+
+# Setup the Flask-JWT-Extended extension
+app.config["JWT_SECRET_KEY"] = "super-secret"  # Change this!
+jwt = JWTManager(app)
 
 
 @app.errorhandler(APIException)
@@ -45,6 +53,7 @@ def get_users():
 @app.route("/users", methods=["POST"])
 def add_user():
     user = User()
+
     request_user = request.json
 
     user.email = request.json.get("email", None)
@@ -64,6 +73,48 @@ def add_user():
     return jsonify(response), 201
 
     # this only runs if `$ python src/main.py` is executed
+
+
+# Create a route to authenticate your users and return JWTs. The
+# create_access_token() function is used to actually generate the JWT.
+@app.route("/login", methods=["POST"])
+def login():
+    username = request.json.get("username", None)
+    password = request.json.get("password", None)
+    if username != "test" or password != "test":
+        return jsonify({"msg": "Bad username or password"}), 401
+
+    access_token = create_access_token(identity=username)
+    return jsonify(access_token=access_token)
+
+
+@app.route("/favorite", methods=["POST"])
+def add_favorite():
+
+    # Create a new instace of the class
+    favorite = Favorites()
+
+    # Save the info inside the class parameters
+    favorite.user_id = request.json.get("user_id", None)
+    favorite.planets_id = request.json.get("planets_id", None)
+
+    # Add the information to the database
+    db.session.add(favorite)
+
+    # Finally we commit the operation
+    db.session.commit()
+
+    return jsonify(message="ok"), 200
+
+
+# Protect a route with jwt_required, which will kick out requests
+# without a valid JWT present.
+@app.route("/protected", methods=["GET"])
+@jwt_required()
+def protected():
+    # Access the identity of the current user with get_jwt_identity
+    current_user = get_jwt_identity()
+    return jsonify(logged_in_as=current_user), 200
 
 
 if __name__ == '__main__':
