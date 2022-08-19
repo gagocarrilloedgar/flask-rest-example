@@ -47,9 +47,12 @@ def add_user():
     user = User()
     request_user = request.json
 
-    user.email = request_user["email"]
+    user.email = request.json.get("email", None)
     user.password = request_user["password"]
     user.is_active = True
+
+    user_id = request.json.get("user_id", None)
+    print(user_id)
 
     db.session.add(user)
     db.session.commit()
