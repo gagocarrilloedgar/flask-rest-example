@@ -1,5 +1,6 @@
 """
 This module takes care of starting the API Server, Loading the DB and Adding the endpoints
+https://flask-marshmallow.readthedocs.io/en/latest/
 """
 import os
 from flask import Flask, request, jsonify, url_for
@@ -8,12 +9,14 @@ from flask_swagger import swagger
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
-from models import db, User, Favorites
+from models import db, User, Favorites, Planet, Civilization
 
 from flask_jwt_extended import create_access_token
 from flask_jwt_extended import get_jwt_identity
 from flask_jwt_extended import jwt_required
 from flask_jwt_extended import JWTManager
+
+from flask_marshmallow import Marshmallow
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
@@ -23,6 +26,9 @@ MIGRATE = Migrate(app, db)
 db.init_app(app)
 CORS(app)
 setup_admin(app)
+
+
+ma = Marshmallow(app)
 
 
 # Setup the Flask-JWT-Extended extension
@@ -88,7 +94,16 @@ def login():
     return jsonify(access_token=access_token)
 
 
-@app.route("/favorite", methods=["POST"])
+@app.route("/favorites", methods=["GET"])
+def get_favorites():
+
+    favorites = Favorites.query.all()
+    favorites = list(map(lambda x: x.serialize(), favorites))
+
+    return jsonify(favorites), 200
+
+
+@app.route("/favorites", methods=["POST"])
 def add_favorite():
 
     # Create a new instace of the class
@@ -115,6 +130,41 @@ def protected():
     # Access the identity of the current user with get_jwt_identity
     current_user = get_jwt_identity()
     return jsonify(logged_in_as=current_user), 200
+
+
+class PlanetSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Planet
+
+    id = ma.auto_field()
+    # civilizations = ma.List(ma.HyperlinkRelated("get_civilzations"))
+    civilizations = ma.auto_field()
+
+
+@ app.route("/planets", methods=["GET"])
+def get_planets():
+
+    planet = Planet.query.first()
+    planet_schema = PlanetSchema()
+    output = planet_schema.dump(planet)
+    return jsonify(output)
+
+
+class CivilizationSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Civilization
+
+    id = ma.auto_field()
+    name = ma.auto_field()
+
+
+@ app.route("/civilization", methods=["GET"])
+def get_civilzations():
+
+    civilization = Civilization.query.first()
+    civilization_schema = CivilizationSchema()
+    output = civilization_schema.dump(civilization)
+    return jsonify(output)
 
 
 if __name__ == '__main__':
