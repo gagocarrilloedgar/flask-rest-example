@@ -128,6 +128,7 @@ def add_category():
 class CategoriesSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Category
+        include_fk = True
 
 
 @app.route("/categories", methods=["GET"])
@@ -143,6 +144,7 @@ def get_categories():
 class CivilizationSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Civilization
+        include_fk = True
 
     id = ma.auto_field()
     name = ma.auto_field()
@@ -196,12 +198,21 @@ def add_character():
     return jsonify(response), 201
 
 
+class CharacterSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Character
+        include_fk = True
+
+    category_id = ma.auto_field()
+    category = ma.Nested(CategoriesSchema)
+
+
 @app.route("/characters", methods=["GET"])
 def get_characters():
 
     charactes = Character.query.all()
-    categories_schema = CategoriesSchema(many=True)
-    output = categories_schema.dump(charactes)
+    characters_schema = CharacterSchema(many=True)
+    output = characters_schema.dump(charactes)
 
     return output, 200
 
