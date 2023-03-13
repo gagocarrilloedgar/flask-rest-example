@@ -205,9 +205,11 @@ class CharacterSchema(ma.SQLAlchemyAutoSchema):
 @app.route("/characters", methods=["GET"])
 def get_characters():
 
-    charactes = Character.query.all()
+    characters = Character.query.all() # If we have the lazy attached to the relationship -> we will get category automatically
     characters_schema = CharacterSchema(many=True)
-    output = characters_schema.dump(charactes)
+    output = characters_schema.dump(characters)
+
+    
 
     return output, 200
 
