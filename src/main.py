@@ -176,11 +176,6 @@ def add_civilization():
     return jsonify(response), 201
 
 
-if __name__ == '__main__':
-    PORT = int(os.environ.get('PORT', 3002))
-    app.run(host='0.0.0.0', port=PORT, debug=False)
-
-
 @app.route("/characters", methods=["POST"])
 def add_character():
 
@@ -215,6 +210,11 @@ def get_characters():
     output = characters_schema.dump(charactes)
 
     return output, 200
+
+
+if __name__ == '__main__':
+    PORT = int(os.environ.get('PORT', 3002))
+    app.run(host='0.0.0.0', port=PORT, debug=False)
 
 
 """
