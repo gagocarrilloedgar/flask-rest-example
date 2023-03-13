@@ -9,7 +9,7 @@ from flask_swagger import swagger
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
-from models import db, User, Favorites, Planet, Civilization
+from models import db, User, Civilization, Category, Character
 
 from flask_jwt_extended import create_access_token
 from flask_jwt_extended import get_jwt_identity
@@ -51,7 +51,7 @@ def sitemap():
 @app.route('/users', methods=['GET'])
 def get_users():
     users = User.query.all()
-    users = list(map(lambda x: x.listausuarios(), users))
+    users = list(map(lambda x: x.serialize(), users))
 
     return jsonify(users), 200
 
@@ -66,9 +66,6 @@ def add_user():
     user.password = request_user["password"]
     user.is_active = True
 
-    user_id = request.json.get("user_id", None)
-    print(user_id)
-
     db.session.add(user)
     db.session.commit()
 
@@ -77,8 +74,6 @@ def add_user():
     }
 
     return jsonify(response), 201
-
-    # this only runs if `$ python src/main.py` is executed
 
 
 # Create a route to authenticate your users and return JWTs. The
@@ -93,6 +88,132 @@ def login():
     access_token = create_access_token(identity=username)
     return jsonify(access_token=access_token)
 
+
+# Protect a route with jwt_required, which will kick out requests
+# without a valid JWT present.
+@app.route("/protected", methods=["GET"])
+@jwt_required()
+def protected():
+    # Access the identity of the current user with get_jwt_identity
+    current_user = get_jwt_identity()
+    return jsonify(logged_in_as=current_user), 200
+
+
+@app.route("/categories", methods=["POST"])
+def add_category():
+
+    title = request.json.get("title", None)
+
+    newCategory = Category(title=title)
+
+    db.session.add(newCategory)
+    db.session.commit()
+
+    response = {
+        "msg": "Category successfully created"
+    }
+
+    return jsonify(response), 201
+
+
+class CategoriesSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Category
+
+
+@app.route("/categories", methods=["GET"])
+def get_categories():
+
+    categories = Category.query.all()
+    categories_schema = CategoriesSchema(many=True)
+    output = categories_schema.dump(categories)
+
+    return output, 200
+
+
+class CivilizationSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Civilization
+
+    id = ma.auto_field()
+    name = ma.auto_field()
+
+
+@app.route("/civilizations", methods=["GET"])
+def get_civilzations():
+
+    civilization = Civilization.query.first()
+    civilization_schema = CivilizationSchema()
+    output = civilization_schema.dump(civilization)
+    return jsonify(output)
+
+
+@app.route("/civilizations", methods=["POST"])
+def add_civilization():
+
+    name = request.json.get("name", None)
+
+    newCivilization = Civilization(name=name)
+
+    db.session.add(newCivilization)
+    db.session.commit()
+
+    response = {
+        "msg": "Civilization successfully created"
+    }
+
+    return jsonify(response), 201
+
+
+if __name__ == '__main__':
+    PORT = int(os.environ.get('PORT', 3002))
+    app.run(host='0.0.0.0', port=PORT, debug=False)
+
+
+@app.route("/characters", methods=["POST"])
+def add_character():
+
+    name = request.json.get("name", None)
+    category_id = request.json.get("category_id", None)
+    newCharacter = Character(name=name, category_id=category_id)
+
+    db.session.add(newCharacter)
+    db.session.commit()
+
+    response = {
+        "msg": "Character successfully created"
+    }
+
+    return jsonify(response), 201
+
+
+@app.route("/characters", methods=["GET"])
+def get_characters():
+
+    charactes = Character.query.all()
+    categories_schema = CategoriesSchema(many=True)
+    output = categories_schema.dump(charactes)
+
+    return output, 200
+
+
+"""
+class PlanetSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = Planet
+
+    id = ma.auto_field()
+    # civilizations = ma.List(ma.HyperlinkRelated("get_civilzations"))
+    civilizations = ma.auto_field()
+
+
+@ app.route("/planets", methods=["GET"])
+def get_planets():
+
+    planet = Planet.query.first()
+    planet_schema = PlanetSchema()
+    output = planet_schema.dump(planet)
+    return jsonify(output)
 
 @app.route("/favorites", methods=["GET"])
 def get_favorites():
@@ -120,53 +241,4 @@ def add_favorite():
     db.session.commit()
 
     return jsonify(message="ok"), 200
-
-
-# Protect a route with jwt_required, which will kick out requests
-# without a valid JWT present.
-@app.route("/protected", methods=["GET"])
-@jwt_required()
-def protected():
-    # Access the identity of the current user with get_jwt_identity
-    current_user = get_jwt_identity()
-    return jsonify(logged_in_as=current_user), 200
-
-
-class PlanetSchema(ma.SQLAlchemyAutoSchema):
-    class Meta:
-        model = Planet
-
-    id = ma.auto_field()
-    # civilizations = ma.List(ma.HyperlinkRelated("get_civilzations"))
-    civilizations = ma.auto_field()
-
-
-@ app.route("/planets", methods=["GET"])
-def get_planets():
-
-    planet = Planet.query.first()
-    planet_schema = PlanetSchema()
-    output = planet_schema.dump(planet)
-    return jsonify(output)
-
-
-class CivilizationSchema(ma.SQLAlchemyAutoSchema):
-    class Meta:
-        model = Civilization
-
-    id = ma.auto_field()
-    name = ma.auto_field()
-
-
-@ app.route("/civilization", methods=["GET"])
-def get_civilzations():
-
-    civilization = Civilization.query.first()
-    civilization_schema = CivilizationSchema()
-    output = civilization_schema.dump(civilization)
-    return jsonify(output)
-
-
-if __name__ == '__main__':
-    PORT = int(os.environ.get('PORT', 3002))
-    app.run(host='0.0.0.0', port=PORT, debug=False)
+"""
