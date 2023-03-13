@@ -2,6 +2,7 @@
 This module takes care of starting the API Server, Loading the DB and Adding the endpoints
 https://flask-marshmallow.readthedocs.io/en/latest/
 """
+
 import os
 from flask import Flask, request, jsonify, url_for
 from flask_migrate import Migrate
@@ -64,6 +65,9 @@ def add_user():
 
     user.email = request.json.get("email", None)
     user.password = request_user["password"]
+
+    # Here we should add password encrypton
+
     user.is_active = True
 
     db.session.add(user)
@@ -80,23 +84,28 @@ def add_user():
 # create_access_token() function is used to actually generate the JWT.
 @app.route("/login", methods=["POST"])
 def login():
-    username = request.json.get("username", None)
+    email = request.json.get("email", None)
     password = request.json.get("password", None)
-    if username != "test" or password != "test":
-        return jsonify({"msg": "Bad username or password"}), 401
 
-    access_token = create_access_token(identity=username)
+    user = User.query.filter_by(email=email).first()
+
+    if password != user.password:
+        return jsonify({"msg": "Bad email or password"}), 401
+
+    access_token = create_access_token(identity=email)
     return jsonify(access_token=access_token)
 
 
 # Protect a route with jwt_required, which will kick out requests
 # without a valid JWT present.
-@app.route("/protected", methods=["GET"])
+@app.route("/check", methods=["GET"])
 @jwt_required()
 def protected():
     # Access the identity of the current user with get_jwt_identity
-    current_user = get_jwt_identity()
-    return jsonify(logged_in_as=current_user), 200
+    current_email = get_jwt_identity()
+    user = User.query.filter_by(email=current_email).first()
+
+    return jsonify(user.serialize()), 200
 
 
 @app.route("/categories", methods=["POST"])
